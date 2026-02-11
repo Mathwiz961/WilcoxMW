@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wilcoxon / Rank Tests p-value Calculator</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; max-width: 980px; }
+    label { font-weight: 600; display:block; margin-top: 10px; }
+    textarea { width: 100%; min-height: 90px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    select, button { padding: 8px; font-size: 14px; }
+    button { margin-top: 12px; cursor: pointer; }
+    .row { display:flex; gap: 12px; flex-wrap: wrap; }
+    .col { flex: 1 1 340px; }
+    .out { margin-top: 14px; background:#fafafa; padding: 10px; border-radius: 8px; border:1px solid #eee; }
+    .err { color: #b00020; font-weight: 600; }
+    .small { color:#444; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Wilcoxon / Rank-based p-value calculator</h2>
+    <div class="small">
+      Choose paired (Wilcoxon signed-rank) or independent (Mann–Whitney U / Wilcoxon rank-sum).
+      Enter values separated by commas, spaces, or new lines.
+    </div>
+
+    <label>Test type</label>
+    <select id="testType">
+      <option value="paired">Paired: Wilcoxon signed-rank</option>
+      <option value="independent">Independent: Mann–Whitney U (rank-sum)</option>
+    </select>
+
+    <label>Alternative hypothesis</label>
+    <select id="alt">
+      <option value="two-sided">two-sided</option>
+      <option value="greater">greater</option>
+      <option value="less">less</option>
+    </select>
+
+    <div class="row">
+      <div class="col">
+        <label id="labelX">Sample X</label>
+        <textarea id="x">1 2 3 4 5</textarea>
+      </div>
+      <div class="col">
+        <label id="labelY">Sample Y</label>
+        <textarea id="y">2 2 4 4 6</textarea>
+      </div>
+    </div>
+
+    <button onclick="compute()">Compute</button>
+
+    <div id="msg" class="err"></div>
+    <div id="result" class="out" style="display:none;"></div>
+
+    <div class="small" style="margin-top:10px;">
+      Notes: p-values use a normal approximation with a continuity correction. For very small samples,
+      “exact” p-values can differ slightly.
+    </div>
+  </div>
+
+<script>
+function parseNums(txt){
+  return txt
+    .replace(/,/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(s => s.length)
+    .map(s => Number(s))
+    .filter(v => Number.isFinite(v));
+}
+
+// Error function approximation
+function erf(x){
+  // Abramowitz-Stegun approximation
+  const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429;
+  const p=0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  const t = 1.0/(1.0+p*x);
+  const y = 1.0 - (((((a5*t + a4)*t + a3)*t + a2)*t + a1)*t)*Math.exp(-x*x);
+  return sign*y;
+}
+
+function normalCdf(z){
+  return 0.5*(1 + erf(z/Math.SQRT2));
+}
+
+function rankWithTies(values){
+  // returns ranks (1..n) averaged for ties; also tie groups sizes
+  const n = values.length;
+  const idx = [...Array(n).keys()].sort((i,j)=>values[i]-values[j]);
+  const ranks = new Array(n);
+  let tieSizes = [];
+  let i=0;
+  while(i<n){
+    let j=i;
+    while(j+1<n && values[idx[j+1]]===values[idx[i]]) j++;
+    const avgRank = ( (i+1) + (j+1) ) / 2.0;
+    const t = j - i + 1;
+    if(t>1) tieSizes.push(t);
+    for(let k=i;k<=j;k++) ranks[idx[k]]=avgRank;
+    i=j+1;
+  }
+  return {ranks, tieSizes};
+}
+
+function computeMannWhitney(x,y,alternative){
+  const n1=x.length, n2=y.length;
+  const all = x.concat(y);
+  const {ranks, tieSizes} = rankWithTies(all);
+
+  // rank sum for group 1
+  let R1=0;
+  for(let i=0;i<n1;i++) R1 += ranks[i];
+
+  // U1 = R1 - n1(n1+1)/2
+  const U1 = R1 - n1*(n1+1)/2;
+  const U2 = n1*n2 - U1;
+  const U = (alternative==="less") ? U1 : (alternative==="greater" ? U1 : Math.min(U1,U2));
+
+  // mean and variance with tie correction (approx)
+  const mu = n1*n2/2;
+
+  // tie correction term
+  let tieTerm = 0;
+  for(const t of tieSizes) tieTerm += (t*t*t - t);
+  const N = n1+n2;
+  const sigma2 = (n1*n2/12) * ( (N+1) - tieTerm/(N*(N-1)) );
+
+  const sigma = Math.sqrt(sigma2);
+
+  // continuity correction
+  let z;
+  if(alternative==="two-sided"){
+    z = (U - mu + 0.5) / sigma; // for min(U1,U2) this is a common approximation
+    const p = 2 * Math.min(normalCdf(z), 1-normalCdf(z));
+    return {statistic: U1, z, pValue: Math.min(1,p), note:`U1=${U1.toFixed(4)}, U2=${U2.toFixed(4)}`};
+  } else if(alternative==="greater"){
+    z = (U1 - mu - 0.5)/sigma;
+    const p = 1 - normalCdf(z);
+    return {statistic: U1, z, pValue: p, note:`U2=${U2.toFixed(4)}`};
+  } else { // less
+    z = (U1 - mu + 0.5)/sigma;
+    const p = normalCdf(z);
+    return {statistic: U1, z, pValue: p, note:`U2=${U2.toFixed(4)}`};
+  }
+}
+
+function computeWilcoxonSignedRank(x,y,alternative){
+  // differences, drop zeros
+  const diffs = x.map((xi,i)=>y[i]-xi);
+  let absDiffs=[], signs=[];
+  for(const d of diffs){
+    if(d===0) continue;
+    absDiffs.push(Math.abs(d));
+    signs.push(Math.sign(d));
+  }
+  const n = absDiffs.length;
+  if(n===0) throw new Error("All paired differences are zero (no information for signed-rank).");
+
+  const {ranks, tieSizes} = rankWithTies(absDiffs);
+
+  let Wplus=0, Wminus=0;
+  for(let i=0;i<n;i++){
+    if(signs[i]>0) Wplus += ranks[i];
+    else Wminus += ranks[i];
+  }
+
+  // Normal approximation with tie correction
+  const mu = n*(n+1)/4;
+
+  // tie correction for signed-rank variance
+  let tieTerm = 0;
+  for(const t of tieSizes) tieTerm += (t*t*t - t);
+  const sigma2 = (n*(n+1)*(2*n+1) - tieTerm)/24;
+  const sigma = Math.sqrt(sigma2);
+
+  let z, p;
+  if(alternative==="two-sided"){
+    const T = Math.min(Wplus, Wminus);
+    z = (T - mu + 0.5) / sigma;
+    p = 2*Math.min(normalCdf(z), 1-normalCdf(z));
+    return {statistic: Wplus, z, pValue: Math.min(1,p), note:`W-=${Wminus.toFixed(4)}, n=${n}`};
+  } else if(alternative==="greater"){
+    // "greater" interpreted as y > x => more positive diffs => large W+
+    z = (Wplus - mu - 0.5)/sigma;
+    p = 1 - normalCdf(z);
+    return {statistic: Wplus, z, pValue: p, note:`W-=${Wminus.toFixed(4)}, n=${n}`};
+  } else { // less (y < x)
+    z = (Wplus - mu + 0.5)/sigma;
+    p = normalCdf(z);
+    return {statistic: Wplus, z, pValue: p, note:`W-=${Wminus.toFixed(4)}, n=${n}`};
+  }
+}
+
+function compute(){
+  const testType = document.getElementById("testType").value;
+  const alternative = document.getElementById("alt").value;
+  const x = parseNums(document.getElementById("x").value);
+  const y = parseNums(document.getElementById("y").value);
+
+  const msg = document.getElementById("msg");
+  const result = document.getElementById("result");
+  msg.textContent = "";
+  result.style.display = "none";
+  result.innerHTML = "";
+
+  try{
+    if(x.length<1 || y.length<1) throw new Error("Please enter numeric values for both samples.");
+
+    let out;
+    if(testType==="paired"){
+      if(x.length !== y.length) throw new Error("Paired test requires X and Y to have the same number of values.");
+      out = computeWilcoxonSignedRank(x,y,alternative);
+      result.innerHTML = `
+        <b>Paired Wilcoxon signed-rank</b><br/>
+        Statistic (W+): ${out.statistic.toFixed(4)}<br/>
+        z: ${out.z.toFixed(4)}<br/>
+        p-value: <b>${out.pValue.toPrecision(6)}</b><br/>
+        <span class="small">${out.note}</span>
+      `;
+    } else {
+      out = computeMannWhitney(x,y,alternative);
+      result.innerHTML = `
+        <b>Independent Mann–Whitney U (Wilcoxon rank-sum)</b><br/>
+        Statistic (U1): ${out.statistic.toFixed(4)}<br/>
+        z: ${out.z.toFixed(4)}<br/>
+        p-value: <b>${out.pValue.toPrecision(6)}</b><br/>
+        <span class="small">${out.note}</span>
+      `;
+    }
+    result.style.display = "block";
+  } catch(e){
+    msg.textContent = e.message || String(e);
+  }
+}
+
+// UI label tweak
+document.getElementById("testType").addEventListener("change", () => {
+  const t = document.getElementById("testType").value;
+  document.getElementById("labelX").textContent = (t==="paired") ? "Sample X (paired)" : "Group 1";
+  document.getElementById("labelY").textContent = (t==="paired") ? "Sample Y (paired)" : "Group 2";
+});
+</script>
+</body>
+</html>
