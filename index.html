@@ -44,46 +44,46 @@
     }
 
     /* Header: title left, ERAU pill right */
-    .header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:16px 18px;
-      background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-      border-bottom: 4px solid var(--gold);
-    }
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 18px;
+  background: var(--navy1);   /* Navy background */
+  color: #ffffff;             /* Default white text */
+  border-bottom: 4px solid var(--gold);
+}
 
-    .titlewrap h1{
-      margin:0;
-      font-size: 20px;
-      line-height: 1.2;
-      color: var(--navy2);
-      font-weight: 800;
-      letter-spacing: .2px;
-    }
+.titlewrap h1{
+  margin:0;
+  font-size: 20px;
+  line-height: 1.2;
+  color: #ffffff;             /* Force white title */
+  font-weight: 800;
+  letter-spacing: .2px;
+}
 
-    .titlewrap .subtitle{
-      margin-top:6px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .erau-pill{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:10px 14px;
-      border-radius: 999px;
-      background: var(--gold);
-      color: var(--navy2);
-      font-weight: 800;
-      letter-spacing: .4px;
-      border: 1px solid rgba(0,0,0,.10);
-      opacity: 1; /* 100% */
-      white-space: nowrap;
-      user-select:none;
-    }
+.titlewrap .subtitle{
+  margin-top:6px;
+  font-size: 13px;
+  color: rgba(255,255,255,.85);  /* Slightly softer white */
+}
+    
+.erau-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 14px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--navy2);
+  font-weight: 800;
+  letter-spacing: .4px;
+  border: 1px solid rgba(0,0,0,.10);
+  opacity: 1;
+  white-space: nowrap;
+}
 
     .content{
       padding:16px 18px 18px;
