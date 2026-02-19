@@ -4,60 +4,244 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wilcoxon / Rank Tests p-value Calculator</title>
+
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 16px; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; max-width: 980px; }
-    label { font-weight: 600; display:block; margin-top: 10px; }
-    textarea { width: 100%; min-height: 90px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    select, button { padding: 8px; font-size: 14px; }
-    button { margin-top: 12px; cursor: pointer; }
-    .row { display:flex; gap: 12px; flex-wrap: wrap; }
-    .col { flex: 1 1 340px; }
-    .out { margin-top: 14px; background:#fafafa; padding: 10px; border-radius: 8px; border:1px solid #eee; }
-    .err { color: #b00020; font-weight: 600; }
-    .small { color:#444; font-size: 13px; }
+    :root{
+      /* ERAU-ish */
+      --navy1:#003A63;
+      --navy2:#002B4A;
+      --gold:#FFC72C;
+
+      /* UI neutrals */
+      --page:#f4f6f8;
+      --card:#ffffff;
+      --text:#0b1220;
+      --muted:#5b6776;
+      --line:#d9e1ea;
+
+      --radius:16px;
+      --shadow:0 10px 24px rgba(0,0,0,.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:18px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--page);
+      color: var(--text);
+    }
+
+    .card{
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    /* Header: title left, ERAU pill right */
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:16px 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+      border-bottom: 4px solid var(--gold);
+    }
+
+    .titlewrap h1{
+      margin:0;
+      font-size: 20px;
+      line-height: 1.2;
+      color: var(--navy2);
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    .titlewrap .subtitle{
+      margin-top:6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .erau-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px 14px;
+      border-radius: 999px;
+      background: var(--gold);
+      color: var(--navy2);
+      font-weight: 800;
+      letter-spacing: .4px;
+      border: 1px solid rgba(0,0,0,.10);
+      opacity: 1; /* 100% */
+      white-space: nowrap;
+      user-select:none;
+    }
+
+    .content{
+      padding:16px 18px 18px;
+    }
+
+    label{
+      display:block;
+      margin-top: 12px;
+      margin-bottom: 6px;
+      font-weight: 800;
+      color: var(--navy2);
+      font-size: 13px;
+      letter-spacing: .15px;
+    }
+
+    select, textarea{
+      width:100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding:10px 12px;
+      font-size: 14px;
+      background:#fff;
+      outline:none;
+    }
+
+    select:focus, textarea:focus{
+      border-color: rgba(0,58,99,.55);
+      box-shadow: 0 0 0 4px rgba(0,58,99,.12);
+    }
+
+    textarea{
+      min-height: 105px;
+      font-family: var(--mono);
+      resize: vertical;
+    }
+
+    .row{
+      display:flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .col{ flex: 1 1 360px; }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    button{
+      appearance:none;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--navy1);
+      color: #fff;
+      box-shadow: 0 8px 16px rgba(0,58,99,.18);
+    }
+    button:hover{ background: var(--navy2); }
+    button:active{ transform: translateY(1px); }
+
+    .err{
+      margin-top: 10px;
+      color: #b00020;
+      font-weight: 800;
+    }
+
+    .out{
+      margin-top: 12px;
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 12px;
+    }
+
+    .out b{ color: var(--navy2); }
+    .small{
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .helpbar{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,199,44,.18);
+      border: 1px solid rgba(255,199,44,.45);
+      color: #3b2f00;
+      font-size: 13px;
+    }
+
+    /* Keep the whole card looking good when embedded in Canvas */
+    @media (max-width: 560px){
+      body{ padding: 10px; }
+      .header{ align-items:flex-start; flex-direction:column; }
+      .erau-pill{ align-self:flex-end; }
+    }
   </style>
 </head>
+
 <body>
   <div class="card">
-    <h2>Wilcoxon / Rank-based p-value calculator</h2>
-    <div class="small">
-      Choose paired (Wilcoxon signed-rank) or independent (Mann–Whitney U / Wilcoxon rank-sum).
-      <b>Enter values separated by commas, spaces, or new lines.</b>
+    <div class="header">
+      <div class="titlewrap">
+        <h1>Wilcoxon / Rank-Based p-value Calculator</h1>
+        <div class="subtitle">Wilcoxon signed-rank (paired) and Mann–Whitney U (independent)</div>
+      </div>
+
+      <div class="erau-pill">Embry-Riddle Aeronautical University</div>
     </div>
 
-    <label>Test type</label>
-    <select id="testType">
-      <option value="paired">Paired: Wilcoxon signed-rank</option>
-      <option value="independent">Independent: Mann–Whitney U (rank-sum)</option>
-    </select>
-
-    <label>Alternative hypothesis</label>
-    <select id="alt">
-      <option value="two-sided">two-sided</option>
-      <option value="greater">greater</option>
-      <option value="less">less</option>
-    </select>
-
-    <div class="row">
-      <div class="col">
-        <label id="labelX">Sample 1</label>
-        <textarea id="x"></textarea>
+    <div class="content">
+      <div class="helpbar">
+        Enter values separated by commas, spaces, or new lines.
       </div>
-      <div class="col">
-        <label id="labelY">Sample 2</label>
-        <textarea id="y"></textarea>
+
+      <label>Test type</label>
+      <select id="testType">
+        <option value="paired">Paired: Wilcoxon signed-rank</option>
+        <option value="independent">Independent: Mann–Whitney U (rank-sum)</option>
+      </select>
+
+      <label>Alternative hypothesis</label>
+      <select id="alt">
+        <option value="two-sided">two-sided</option>
+        <option value="greater">greater</option>
+        <option value="less">less</option>
+      </select>
+
+      <div class="row">
+        <div class="col">
+          <label id="labelX">Sample 1</label>
+          <textarea id="x" placeholder="e.g., 12, 15, 18, 22"></textarea>
+        </div>
+        <div class="col">
+          <label id="labelY">Sample 2</label>
+          <textarea id="y" placeholder="e.g., 10, 14, 19, 21"></textarea>
+        </div>
       </div>
-    </div>
 
-    <button onclick="compute()">Compute</button>
+      <div class="actions">
+        <button onclick="compute()">Compute</button>
+      </div>
 
-    <div id="msg" class="err"></div>
-    <div id="result" class="out" style="display:none;"></div>
+      <div id="msg" class="err"></div>
+      <div id="result" class="out" style="display:none;"></div>
 
-    <div class="small" style="margin-top:10px;">
-      Notes: p-values use a normal approximation with a continuity correction. For very small samples,
-      “exact” p-values can differ slightly.
+      <div class="small">
+        Notes: p-values use a normal approximation with a continuity correction. For very small samples,
+        exact p-values may differ slightly.
+      </div>
     </div>
   </div>
 
